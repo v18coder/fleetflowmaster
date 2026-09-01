@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Trip Dispatcher{% endblock %}
+{% block header_title %}Trip Dispatcher & Management{% endblock %}
+{% block header_subtitle %}Coordinate cargo journeys, validate payload weights, and monitor delivery lifecycles{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div class="search-input-group">
+        <i class="fas fa-search"></i>
+        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search origin, destination, cargo, driver...">
+    </div>
+    <div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Lifecycles</option>
+            <option value="Draft">Draft</option>
+            <option value="Dispatched">Dispatched (On Trip)</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" data-modal-target="createTripModal">
+        <i class="fas fa-route"></i> Create New Dispatch
+    </button>
+</div>
+
+<!-- Trips Table -->
+<div class="panel">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Trip ID</th>
+                    <th>Route (Point A → Point B)</th>
+                    <th>Assigned Vehicle</th>
+                    <th>Driver</th>
+                    <th>Payload Weight</th>
+                    <th>Revenue</th>
+                    <th>Status</th>
+                    <th>Workflow Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in trips %}
+                <tr data-status="{{ t.status }}">
+                    <td>
+                        <strong>#TRIP-{{ t.id }}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ t.created_at[:10] }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600;">{{ t.origin }} → {{ t.destination }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">{{ t.cargo_description }}</div>
+                    </td>
+                    <td>
+                        <div><strong>{{ t.vehicle_name }}</strong></div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);">Max: {{ t.vehicle_max_cap }} kg</div>
+                    </td>
+                    <td>
+                        <div><strong>{{ t.driver_name }}</strong></div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);"><i class="fas fa-phone-alt" style="font-size: 10px;"></i> {{ t.driver_phone }}</div>
+                    </td>
+                    <td>
+                        <strong>{{ t.cargo_weight }} kg</strong>
+                        {% if t.cargo_weight > t.vehicle_max_cap %}
+                        <span style="color: var(--danger); font-size: 11px; display: block;">Over capacity!</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--success); font-weight: 600;">${{ "{:,.2f}".format(t.revenue) }}</td>
+                    <td>
+                        <span class="status-pill pill-{{ t.status.lower() }}">{{ t.status }}</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            {% if t.status == 'Draft' %}
+                            <form method="POST" action="{{ url_for('dispatch_trip', trip_id=t.id) }}">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-play"></i> Dispatch
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('cancel_trip', trip_id=t.id) }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </form>
+                            {% elif t.status == 'Dispatched' %}
+                            <button class="btn btn-success btn-sm" onclick="openCompleteModal({{ t.id }}, '{{ t.vehicle_name }}', {{ t.vehicle_odometer }})">
+                                <i class="fas fa-check-circle"></i> Complete
+                            </button>
+                            <form method="POST" action="{{ url_for('cancel_trip', trip_id=t.id) }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-ban"></i> Cancel
+                                </button>
+                            </form>
+                            {% elif t.status == 'Completed' %}
+                            <span style="font-size: 12px; color: var(--success); font-weight: 600;">
+                                <i class="fas fa-check-double"></i> Finished ({{ t.distance }} km)
+                            </span>
+                            {% else %}
+                            <span style="font-size: 12px; color: var(--text-muted);">Cancelled</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Trip Modal -->
+<div class="modal-backdrop" id="createTripModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-route" style="color: var(--primary);"></i> Create & Validate Trip Dispatch</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('create_trip') }}">
+            <div class="modal-body">
+                <!-- Vehicle Selector -->
+                <div class="form-group">
+                    <label class="form-label">Select Available Vehicle</label>
+                    <select name="vehicle_id" id="tripVehicleSelect" class="form-select" required style="width: 100%;">
+                        <option value="">-- Choose Available Vehicle --</option>
+                        {% for v in available_vehicles %}
+                        <option value="{{ v.id }}" data-capacity="{{ v.max_capacity }}" data-type="{{ v.type }}" data-odometer="{{ v.odometer }}">
+                            {{ v.name }} ({{ v.type }} - Max {{ v.max_capacity }} kg) - Plate: {{ v.license_plate }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Driver Selector -->
+                <div class="form-group">
+                    <label class="form-label">Select Available Driver</label>
+                    <select name="driver_id" id="tripDriverSelect" class="form-select" required style="width: 100%;">
+                        <option value="">-- Choose Qualified Driver --</option>
+                        {% for d in available_drivers %}
+                        <option value="{{ d.id }}" data-category="{{ d.license_category }}" data-expired="{{ 'true' if is_expired(d.license_expiry) else 'false' }}">
+                            {{ d.name }} (License: {{ d.license_category }}, Score: {{ d.safety_score }}/100)
+                            {% if is_expired(d.license_expiry) %}[EXPIRED]{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div id="driverWarning" class="form-help" style="color: var(--danger); font-weight: 600; display: none;"></div>
+                </div>
+
+                <!-- Cargo & Weight -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Cargo Weight (kg)</label>
+                        <input type="number" step="0.1" name="cargo_weight" id="tripCargoWeight" class="form-control" placeholder="e.g. 450" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Trip Revenue ($)</label>
+                        <input type="number" step="0.01" name="revenue" class="form-control" placeholder="e.g. 350.00" required>
+                    </div>
+                </div>
+                <div id="payloadWarning" class="form-help" style="color: var(--danger); font-weight: 600; margin-bottom: 12px; display: none;"></div>
+
+                <div class="form-group">
+                    <label class="form-label">Cargo Description</label>
+                    <input type="text" name="cargo_description" class="form-control" placeholder="e.g. Perishable Fresh Goods" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Origin (Point A)</label>
+                        <input type="text" name="origin" class="form-control" placeholder="Warehouse Alpha" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destination (Point B)</label>
+                        <input type="text" name="destination" class="form-control" placeholder="Distribution Hub 4" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" name="action" value="draft" class="btn btn-secondary">Save as Draft</button>
+                <button type="submit" name="action" value="dispatch" id="submitTripBtn" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Dispatch Now
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Complete Trip Modal -->
+<div class="modal-backdrop" id="completeTripModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-flag-checkered" style="color: var(--success);"></i> Complete Trip & Log Odometer</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" id="completeTripForm" action="">
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    Complete trip for <strong id="completeVehicleName"></strong>. Enter the driver's final odometer reading to calculate total distance and return the vehicle & driver to "Available".
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Final Odometer Reading (km)</label>
+                    <input type="number" step="1" name="final_odometer" id="finalOdometerInput" class="form-control" required>
+                    <div class="form-help" id="minOdometerHelp"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Complete Trip</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCompleteModal(tripId, vehicleName, startOdo) {
+    const modal = document.getElementById('completeTripModal');
+    const form = document.getElementById('completeTripForm');
+    const vName = document.getElementById('completeVehicleName');
+    const input = document.getElementById('finalOdometerInput');
+    const help = document.getElementById('minOdometerHelp');
+
+    form.action = `/trips/${tripId}/complete`;
+    vName.textContent = vehicleName;
+    input.min = startOdo;
+    input.value = startOdo + 25; // Default suggestion
+    help.textContent = `Starting odometer was ${startOdo} km. Final reading must be >= ${startOdo} km.`;
+
+    modal.classList.add('show');
+}
+</script>
+{% endblock %}

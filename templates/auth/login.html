@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | FleetFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo/logo.png') }}">
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 440px;
+            padding: 36px;
+            position: relative;
+        }
+
+        .home-nav-btn {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            transition: all 0.2s;
+        }
+
+        .home-nav-btn:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+            transform: translateX(-2px);
+        }
+
+        .demo-roles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .role-btn {
+            padding: 8px 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition-fast);
+        }
+
+        .role-btn:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <a href="{{ url_for('home') }}" class="home-nav-btn">
+            <i class="fas fa-arrow-left"></i> Home
+        </a>
+
+        <div style="text-align: center; margin-bottom: 24px; margin-top: 16px;">
+            <div class="logo-badge" style="margin: 0 auto 12px auto; width: 48px; height: 48px; font-size: 24px;">
+                <i class="fas fa-cubes"></i>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; color: var(--text-main);">FleetFlow</h2>
+            <p style="font-size: 13px; color: var(--text-muted);">Sign in to your operating account</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+            style="padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-bottom: 16px; background: {% if category=='danger' %}#fef2f2; color: #991b1b; border: 1px solid #fecaca;{% else %}#ecfdf5; color: #065f46; border: 1px solid #a7f3d0;{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" name="email" id="loginEmail" class="form-control" placeholder="name@fleetflow.com"
+                    required value="manager@fleetflow.com">
+            </div>
+
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between;">
+                    <label class="form-label"><i class="fas fa-lock"></i> Password</label>
+                    <a href="{{ url_for('forgot_password') }}"
+                        style="font-size: 11.5px; color: var(--primary); text-decoration: none;">Forgot password?</a>
+                </div>
+                <input type="password" name="password" id="loginPassword" class="form-control" placeholder="••••••••"
+                    required value="password123">
+            </div>
+
+            <button type="submit" class="btn btn-primary"
+                style="width: 100%; padding: 11px; font-size: 14px; margin-top: 8px;">
+                <i class="fas fa-sign-in-alt"></i> Sign In to FleetFlow
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 18px; font-size: 13px; color: var(--text-muted);">
+            Don't have an account?
+            <a href="{{ url_for('register') }}"
+                style="color: var(--primary); font-weight: 600; text-decoration: none;">Create Account</a>
+        </div>
+
+        <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-color);">
+            <div
+                style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">
+                Instant Demo Access (Select Role)
+            </div>
+            <div class="demo-roles">
+                <button type="button" class="role-btn" onclick="fillRole('manager@fleetflow.com')">
+                    <i class="fas fa-user-shield" style="color: #4f46e5;"></i> Manager
+                </button>
+                <button type="button" class="role-btn" onclick="fillRole('dispatcher@fleetflow.com')">
+                    <i class="fas fa-shipping-fast" style="color: #0ea5e9;"></i> Dispatcher
+                </button>
+                <button type="button" class="role-btn" onclick="fillRole('safety@fleetflow.com')">
+                    <i class="fas fa-hard-hat" style="color: #10b981;"></i> Safety Officer
+                </button>
+                <button type="button" class="role-btn" onclick="fillRole('finance@fleetflow.com')">
+                    <i class="fas fa-calculator" style="color: #f59e0b;"></i> Financial Analyst
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fillRole(email) {
+            document.getElementById('loginEmail').value = email;
+            document.getElementById('loginPassword').value = 'password123';
+        }
+    </script>
+</body>
+
+</html>

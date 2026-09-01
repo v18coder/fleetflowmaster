@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Analytics & ROI{% endblock %}
+{% block header_title %}Operational Analytics & Financial Reports{% endblock %}
+{% block header_subtitle %}Data-driven decisions: Fuel Efficiency (km/L), Cost-per-km, Vehicle ROI, and Exporting{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: var(--text-main);"><i class="fas fa-file-export"></i> One-Click Audits:</span>
+        <a href="{{ url_for('export_csv', report_type='financial') }}" class="btn btn-secondary">
+            <i class="fas fa-file-csv" style="color: #10b981;"></i> Financial CSV
+        </a>
+        <a href="{{ url_for('export_csv', report_type='fuel') }}" class="btn btn-secondary">
+            <i class="fas fa-file-csv" style="color: #0ea5e9;"></i> Fuel CSV
+        </a>
+        <a href="{{ url_for('export_csv', report_type='maintenance') }}" class="btn btn-secondary">
+            <i class="fas fa-file-csv" style="color: #f59e0b;"></i> Maintenance CSV
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print"></i> Print / PDF Report
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-coins" style="color: var(--primary);"></i> Vehicle ROI & Operating Cost Engine</div>
+        <div style="font-size: 11.5px; color: var(--text-muted);">
+            ROI: <code>[Revenue - (Maintenance + Fuel + Expenses)] / Acquisition Cost × 100%</code>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Acquisition Cost</th>
+                    <th>Total Revenue</th>
+                    <th>Fuel Cost</th>
+                    <th>Maintenance</th>
+                    <th>Expenses</th>
+                    <th>Net Profit</th>
+                    <th>Vehicle ROI</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in roi_data %}
+                <tr>
+                    <td>
+                        <strong>{{ r.name }}</strong>
+                        <div style="font-size: 11.5px; color: var(--text-muted);"><code>{{ r.license_plate }}</code> ({{ r.type }})</div>
+                    </td>
+                    <td>${{ "{:,.2f}".format(r.acquisition_cost) }}</td>
+                    <td style="color: var(--success); font-weight: 600;">+${{ "{:,.2f}".format(r.total_revenue) }}</td>
+                    <td style="color: var(--danger); font-size: 12.5px;">-${{ "{:,.2f}".format(r.total_fuel) }}</td>
+                    <td style="color: var(--danger); font-size: 12.5px;">-${{ "{:,.2f}".format(r.total_maintenance) }}</td>
+                    <td style="color: var(--danger); font-size: 12.5px;">-${{ "{:,.2f}".format(r.total_expenses) }}</td>
+                    <td>
+                        <strong style="color: {% if r.net_profit >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+                            ${{ "{:,.2f}".format(r.net_profit) }}
+                        </strong>
+                    </td>
+                    <td>
+                        <span class="status-pill {% if r.roi_percentage >= 0 %}pill-available{% else %}pill-cancelled{% endif %}">
+                            {{ "{:+.1f}".format(r.roi_percentage) }}% ROI
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-tachometer-alt" style="color: var(--secondary);"></i> Fuel Efficiency (km/L) & Cost-Per-KM Analysis</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Total Distance</th>
+                    <th>Total Fuel</th>
+                    <th>Fuel Efficiency (km / L)</th>
+                    <th>Total Operating Cost</th>
+                    <th>Cost Per KM</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in efficiency_data %}
+                <tr>
+                    <td><strong>{{ e.name }}</strong> ({{ e.license_plate }})</td>
+                    <td>{{ "{:,}".format(e.odometer) }} km</td>
+                    <td>{{ "{:,.1f}".format(e.total_liters) }} L</td>
+                    <td><strong style="color: var(--primary); font-size: 14px;">{{ e.fuel_efficiency }} km/L</strong></td>
+                    <td>${{ "{:,.2f}".format(e.total_operating_cost) }}</td>
+                    <td>
+                        <span class="status-pill pill-draft">
+                            <strong>${{ "{:.2f}".format(e.cost_per_km) }}</strong> / km
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

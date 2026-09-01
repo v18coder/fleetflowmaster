@@ -1,0 +1,234 @@
+﻿{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block header_title %}
+    {% if current_user.role == 'Manager' %}
+        Executive Fleet Dashboard
+    {% elif current_user.role == 'Dispatcher' %}
+        Dispatcher Operations Dashboard
+    {% elif current_user.role == 'Safety Officer' %}
+        Safety & Compliance Dashboard
+    {% else %}
+        Financial Telemetry Dashboard
+    {% endif %}
+{% endblock %}
+{% block header_subtitle %}
+    Personalized session for <strong>{{ current_user.name }}</strong> &bull; Role: <span class="status-pill pill-available" style="font-size: 11px;">{{ current_user.role }}</span>
+{% endblock %}
+
+{% block content %}
+<!-- User Session Security Banner -->
+<div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: gap: 16px;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+        <div class="user-avatar" style="width: 44px; height: 44px; font-size: 16px;">
+            {{ current_user.name[:2].upper() }}
+        </div>
+        <div>
+            <div style="font-size: 15px; font-weight: 700; color: var(--text-main);">
+                Welcome back, {{ current_user.name }}!
+            </div>
+            <div style="font-size: 12.5px; color: var(--text-muted);">
+                <i class="fas fa-shield-halved" style="color: var(--primary);"></i> Authenticated as <strong>{{ current_user.role }}</strong> ({{ current_user.email }})
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center;">
+        <span style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 6px 12px; border-radius: 9999px; border: 1px solid var(--border-color);">
+            <i class="fas fa-lock" style="color: var(--success);"></i> Private Session Active
+        </span>
+        {% if current_user.role in ['Manager', 'Dispatcher'] %}
+        <a href="{{ url_for('trips') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> New Trip Dispatch
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+    <div class="kpi-card info">
+        <div class="kpi-header">
+            <span class="kpi-title">Active Fleet</span>
+            <div class="kpi-icon"><i class="fas fa-truck-fast"></i></div>
+        </div>
+        <div class="kpi-value">{{ active_fleet }}</div>
+        <div class="kpi-subtext">Vehicles currently "On Trip"</div>
+    </div>
+
+    <div class="kpi-card warning">
+        <div class="kpi-header">
+            <span class="kpi-title">Maintenance Alerts</span>
+            <div class="kpi-icon"><i class="fas fa-wrench"></i></div>
+        </div>
+        <div class="kpi-value">{{ in_shop }}</div>
+        <div class="kpi-subtext">Vehicles marked "In Shop"</div>
+    </div>
+
+    <div class="kpi-card success">
+        <div class="kpi-header">
+            <span class="kpi-title">Fleet Utilization</span>
+            <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
+        </div>
+        <div class="kpi-value">{{ utilization_rate }}%</div>
+        <div class="kpi-subtext">{{ active_fleet }} active / {{ total_vehicles }} operational</div>
+    </div>
+
+    <div class="kpi-card primary">
+        <div class="kpi-header">
+            <span class="kpi-title">Pending Cargo</span>
+            <div class="kpi-icon"><i class="fas fa-boxes-packing"></i></div>
+        </div>
+        <div class="kpi-value">{{ pending_cargo }}</div>
+        <div class="kpi-subtext">Shipments waiting for dispatch</div>
+    </div>
+</div>
+
+<!-- Role-Tailored Action & Filter Bar -->
+<div class="filter-bar">
+    <div class="search-input-group">
+        <i class="fas fa-search"></i>
+        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search vehicles, routes, plate ID...">
+    </div>
+    <div>
+        <select id="typeFilter" class="form-select">
+            <option value="">All Vehicle Types</option>
+            <option value="Truck">Trucks</option>
+            <option value="Van">Vans</option>
+            <option value="Bike">Cargo Bikes</option>
+        </select>
+    </div>
+    <div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="Available">Available</option>
+            <option value="On Trip">On Trip</option>
+            <option value="In Shop">In Shop</option>
+            <option value="Retired">Retired</option>
+        </select>
+    </div>
+    <div>
+        <select id="regionFilter" class="form-select">
+            <option value="">All Regions</option>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="West">West</option>
+            <option value="Central">Central</option>
+        </select>
+    </div>
+</div>
+
+<!-- Fleet Telemetry Table -->
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title">
+            <i class="fas fa-satellite-dish" style="color: var(--primary);"></i>
+            <span>Fleet Availability & Live Status</span>
+        </div>
+        <a href="{{ url_for('vehicles') }}" class="btn btn-secondary btn-sm">
+            View All Assets <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vehicle Name</th>
+                    <th>Plate ID</th>
+                    <th>Type</th>
+                    <th>Capacity</th>
+                    <th>Odometer</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in fleet_vehicles %}
+                <tr data-type="{{ v.type }}" data-status="{{ v.status }}" data-region="{{ v.region }}">
+                    <td>
+                        <div style="font-weight: 600;">{{ v.name }}</div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);">{{ v.model }}</div>
+                    </td>
+                    <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">{{ v.license_plate }}</code></td>
+                    <td>
+                        <i class="fas {% if v.type=='Truck' %}fa-truck{% elif v.type=='Van' %}fa-shuttle-van{% else %}fa-bicycle{% endif %}" style="color: var(--primary); margin-right: 4px;"></i>
+                        {{ v.type }}
+                    </td>
+                    <td>{{ "{:,.0f}".format(v.max_capacity) }} kg</td>
+                    <td>{{ "{:,}".format(v.odometer) }} km</td>
+                    <td>{{ v.region }}</td>
+                    <td>
+                        <span class="status-pill pill-{{ v.status.lower().replace(' ', '') }}">
+                            {{ v.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if v.status == 'Available' and current_user.role in ['Manager', 'Dispatcher'] %}
+                        <a href="{{ url_for('trips') }}?vehicle_id={{ v.id }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-paper-plane"></i> Dispatch
+                        </a>
+                        {% elif v.status == 'In Shop' and current_user.role in ['Manager', 'Safety Officer'] %}
+                        <a href="{{ url_for('maintenance') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-wrench"></i> In Service
+                        </a>
+                        {% else %}
+                        <span style="font-size: 12px; color: var(--text-muted);"><i class="fas fa-check"></i> {{ v.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- User-Tailored Recent Activity Feed -->
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title">
+            <i class="fas fa-clock-rotate-left" style="color: var(--secondary);"></i>
+            <span>
+                {% if current_user.role == 'Dispatcher' %}
+                    My Dispatches & Active Routes
+                {% elif current_user.role == 'Financial Analyst' %}
+                    Recent Revenue & Cost Events
+                {% else %}
+                    Recent Trip Activity Stream
+                {% endif %}
+            </span>
+        </div>
+        <a href="{{ url_for('trips') }}" class="btn btn-secondary btn-sm">Manage All Trips</a>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Trip ID</th>
+                    <th>Vehicle</th>
+                    <th>Driver</th>
+                    <th>Route</th>
+                    <th>Payload</th>
+                    <th>Revenue</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in recent_trips %}
+                <tr>
+                    <td><strong>#TRIP-{{ t.id }}</strong></td>
+                    <td>{{ t.vehicle_name }} ({{ t.license_plate }})</td>
+                    <td>{{ t.driver_name }}</td>
+                    <td>{{ t.origin }} <i class="fas fa-arrow-right" style="font-size: 10px; color: var(--text-muted);"></i> {{ t.destination }}</td>
+                    <td>{{ t.cargo_weight }} kg</td>
+                    <td style="color: var(--success); font-weight: 600;">${{ "{:,.2f}".format(t.revenue) }}</td>
+                    <td>
+                        <span class="status-pill pill-{{ t.status.lower() }}">{{ t.status }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

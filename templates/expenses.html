@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Fuel & Expenses{% endblock %}
+{% block header_title %}Completed Trip, Expense & Fuel Logging{% endblock %}
+{% block header_subtitle %}Track fuel liters, costs, and automated Total Operational Cost (Fuel + Maintenance + Expenses){% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+    <div class="kpi-card info">
+        <div class="kpi-header">
+            <span class="kpi-title">Total Fuel Spend</span>
+            <div class="kpi-icon"><i class="fas fa-gas-pump"></i></div>
+        </div>
+        <div class="kpi-value">${{ "{:,.2f}".format(total_fuel_cost) }}</div>
+        <div class="kpi-subtext">{{ "{:,.1f}".format(total_fuel_liters) }} Liters logged</div>
+    </div>
+
+    <div class="kpi-card warning">
+        <div class="kpi-header">
+            <span class="kpi-title">Total Maintenance</span>
+            <div class="kpi-icon"><i class="fas fa-wrench"></i></div>
+        </div>
+        <div class="kpi-value">${{ "{:,.2f}".format(total_maintenance_cost) }}</div>
+        <div class="kpi-subtext">Preventative & repairs</div>
+    </div>
+
+    <div class="kpi-card primary">
+        <div class="kpi-header">
+            <span class="kpi-title">Direct Expenses</span>
+            <div class="kpi-icon"><i class="fas fa-receipt"></i></div>
+        </div>
+        <div class="kpi-value">${{ "{:,.2f}".format(total_other_expenses) }}</div>
+        <div class="kpi-subtext">Tolls, parking, permits</div>
+    </div>
+
+    <div class="kpi-card success">
+        <div class="kpi-header">
+            <span class="kpi-title">Total Operational Cost</span>
+            <div class="kpi-icon"><i class="fas fa-calculator"></i></div>
+        </div>
+        <div class="kpi-value">${{ "{:,.2f}".format(total_operational_cost) }}</div>
+        <div class="kpi-subtext">Fuel + Maintenance + Expenses</div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <button class="btn btn-primary" data-modal-target="addFuelModal">
+        <i class="fas fa-gas-pump"></i> Log Fuel Refill
+    </button>
+    <button class="btn btn-secondary" data-modal-target="addExpenseModal">
+        <i class="fas fa-receipt"></i> Log Expense
+    </button>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-gas-pump" style="color: var(--secondary);"></i> Fuel Refill Logs</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Liters</th>
+                    <th>Total Cost</th>
+                    <th>Cost/L</th>
+                    <th>Odometer</th>
+                    <th>Trip Ref</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fuel_logs %}
+                <tr>
+                    <td>{{ f.fuel_date }}</td>
+                    <td><strong>{{ f.vehicle_name }}</strong> ({{ f.license_plate }})</td>
+                    <td>{{ f.liters }} L</td>
+                    <td style="font-weight: 600; color: var(--danger);">${{ "{:,.2f}".format(f.cost) }}</td>
+                    <td>${{ "{:.2f}".format(f.cost / f.liters) if f.liters > 0 else 0 }}/L</td>
+                    <td>{{ "{:,}".format(f.odometer) }} km</td>
+                    <td>{% if f.trip_id %}#TRIP-{{ f.trip_id }}{% else %}Fleet General{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-receipt" style="color: var(--primary);"></i> Operational & Route Expenses</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Expense Type</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Trip ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e.expense_date }}</td>
+                    <td><strong>{{ e.vehicle_name }}</strong> ({{ e.license_plate }})</td>
+                    <td><span class="status-pill pill-draft">{{ e.expense_type }}</span></td>
+                    <td style="font-weight: 600; color: var(--danger);">${{ "{:,.2f}".format(e.amount) }}</td>
+                    <td>{{ e.description }}</td>
+                    <td>{% if e.trip_id %}#TRIP-{{ e.trip_id }}{% else %}General{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Fuel Modal -->
+<div class="modal-backdrop" id="addFuelModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-gas-pump" style="color: var(--secondary);"></i> Record Fuel Log</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_fuel') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Vehicle</label>
+                    <select name="vehicle_id" class="form-select" required style="width: 100%;">
+                        {% for v in all_vehicles %}
+                        <option value="{{ v.id }}">{{ v.name }} ({{ v.license_plate }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Trip Reference (Optional)</label>
+                    <select name="trip_id" class="form-select" style="width: 100%;">
+                        <option value="">-- No Specific Trip --</option>
+                        {% for t in recent_trips %}
+                        <option value="{{ t.id }}">#TRIP-{{ t.id }} - {{ t.origin }} → {{ t.destination }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Liters Refilled</label>
+                        <input type="number" step="0.1" name="liters" class="form-control" placeholder="45.0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Cost ($)</label>
+                        <input type="number" step="0.01" name="cost" class="form-control" placeholder="140.00" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Odometer at Refill (km)</label>
+                        <input type="number" step="1" name="odometer" class="form-control" placeholder="45200" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="fuel_date" class="form-control" value="{{ today() }}" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Log</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-backdrop" id="addExpenseModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-receipt" style="color: var(--primary);"></i> Record Route Expense</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_expense') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Vehicle</label>
+                    <select name="vehicle_id" class="form-select" required style="width: 100%;">
+                        {% for v in all_vehicles %}
+                        <option value="{{ v.id }}">{{ v.name }} ({{ v.license_plate }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Expense Category</label>
+                        <select name="expense_type" class="form-select" required style="width: 100%;">
+                            <option value="Toll Fees">Toll Fees</option>
+                            <option value="Parking & Permit">Parking & Permit</option>
+                            <option value="Cargo Insurance">Cargo Insurance</option>
+                            <option value="Cleaning & Sanitation">Cleaning & Sanitation</option>
+                            <option value="Fines & Penalties">Fines & Penalties</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount ($)</label>
+                        <input type="number" step="0.01" name="amount" class="form-control" placeholder="45.00" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-control" placeholder="Bridge toll passage" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="expense_date" class="form-control" value="{{ today() }}" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

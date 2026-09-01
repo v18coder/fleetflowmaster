@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Maintenance & Service Logs{% endblock %}
+{% block header_title %}Maintenance & Service Logs{% endblock %}
+{% block header_subtitle %}Preventative health tracking, workshop logs, and automatic fleet status lock{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div class="search-input-group">
+        <i class="fas fa-search"></i>
+        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search vehicle, service type, vendor...">
+    </div>
+    <div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="In Progress">In Progress (In Shop)</option>
+            <option value="Completed">Completed</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" data-modal-target="addMaintenanceModal">
+        <i class="fas fa-wrench"></i> Log Maintenance
+    </button>
+</div>
+
+<div class="panel">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Log ID</th>
+                    <th>Vehicle</th>
+                    <th>Service Type & Notes</th>
+                    <th>Service Date</th>
+                    <th>Vendor</th>
+                    <th>Cost</th>
+                    <th>Next Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in maintenance_logs %}
+                <tr data-status="{{ m.status }}">
+                    <td><strong>#MNT-{{ m.id }}</strong></td>
+                    <td>
+                        <div style="font-weight: 600;">{{ m.vehicle_name }}</div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);">{{ m.license_plate }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary);">{{ m.service_type }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">{{ m.description }}</div>
+                    </td>
+                    <td>{{ m.service_date }}</td>
+                    <td>{{ m.vendor or 'Internal Workshop' }}</td>
+                    <td style="font-weight: 600; color: var(--danger);">${{ "{:,.2f}".format(m.cost) }}</td>
+                    <td>{{ m.next_service_date or 'N/A' }}</td>
+                    <td>
+                        {% if m.status == 'In Progress' %}
+                        <span class="status-pill pill-inshop"><i class="fas fa-tools"></i> In Shop</span>
+                        {% else %}
+                        <span class="status-pill pill-completed"><i class="fas fa-check"></i> Completed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.status == 'In Progress' %}
+                        <form method="POST" action="{{ url_for('complete_maintenance', maintenance_id=m.id) }}">
+                            <button type="submit" class="btn btn-success btn-sm" title="Restore vehicle to Available">
+                                <i class="fas fa-check"></i> Complete & Unlock
+                            </button>
+                        </form>
+                        {% else %}
+                        <span style="font-size: 12px; color: var(--text-muted);">Resolved</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="addMaintenanceModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-tools" style="color: var(--warning);"></i> Log Service & Put Vehicle "In Shop"</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_maintenance') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Select Vehicle</label>
+                    <select name="vehicle_id" class="form-select" required style="width: 100%;">
+                        <option value="">-- Choose Vehicle --</option>
+                        {% for v in all_vehicles %}
+                        {% if v.status != 'Retired' %}
+                        <option value="{{ v.id }}">{{ v.name }} ({{ v.license_plate }}) - Status: {{ v.status }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="form-help" style="color: var(--warning); font-weight: 600;">
+                        <i class="fas fa-info-circle"></i> Auto-Logic: Logging service will automatically switch the vehicle status to "In Shop" and remove it from Dispatcher availability.
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Service Type</label>
+                    <input type="text" name="service_type" class="form-control" placeholder="e.g. Oil Change, Brake Service" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description / Work Notes</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Service notes..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Service Date</label>
+                        <input type="date" name="service_date" class="form-control" value="{{ today() }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Service Cost ($)</label>
+                        <input type="number" step="0.01" name="cost" class="form-control" placeholder="250.00" required>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Vendor</label>
+                        <input type="text" name="vendor" class="form-control" placeholder="Titan Garage">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Next Service Date</label>
+                        <input type="date" name="next_service_date" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-warning"><i class="fas fa-wrench"></i> Log Service</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

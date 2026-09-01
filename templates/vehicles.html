@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Vehicle Registry{% endblock %}
+{% block header_title %}Vehicle Registry & Assets{% endblock %}
+{% block header_subtitle %}Manage physical vehicles, load limits, and lifecycle status{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div class="search-input-group">
+        <i class="fas fa-search"></i>
+        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search vehicle name, plate, model...">
+    </div>
+    <div>
+        <select id="typeFilter" class="form-select">
+            <option value="">All Types</option>
+            <option value="Truck">Trucks</option>
+            <option value="Van">Vans</option>
+            <option value="Bike">Bikes</option>
+        </select>
+    </div>
+    <div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="Available">Available</option>
+            <option value="On Trip">On Trip</option>
+            <option value="In Shop">In Shop</option>
+            <option value="Retired">Retired (Out of Service)</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" data-modal-target="addVehicleModal">
+        <i class="fas fa-plus"></i> Add Vehicle
+    </button>
+</div>
+
+<div class="panel">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Asset Details</th>
+                    <th>License Plate (Unique ID)</th>
+                    <th>Type</th>
+                    <th>Max Payload</th>
+                    <th>Odometer</th>
+                    <th>Acquisition Cost</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vehicles %}
+                <tr data-type="{{ v.type }}" data-status="{{ v.status }}" data-region="{{ v.region }}">
+                    <td>
+                        <div style="font-weight: 600; font-size: 14px;">{{ v.name }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">{{ v.model }} • Region: {{ v.region }}</div>
+                    </td>
+                    <td><code>{{ v.license_plate }}</code></td>
+                    <td>
+                        <i class="fas {% if v.type=='Truck' %}fa-truck{% elif v.type=='Van' %}fa-shuttle-van{% else %}fa-bicycle{% endif %}" style="color: var(--primary);"></i>
+                        {{ v.type }}
+                    </td>
+                    <td><strong>{{ "{:,.0f}".format(v.max_capacity) }} kg</strong></td>
+                    <td>{{ "{:,}".format(v.odometer) }} km</td>
+                    <td>${{ "{:,.2f}".format(v.acquisition_cost) }}</td>
+                    <td>
+                        <span class="status-pill pill-{{ v.status.lower().replace(' ', '') }}">
+                            {{ v.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 6px;">
+                            <form method="POST" action="{{ url_for('toggle_vehicle_status', vehicle_id=v.id) }}" style="display:inline;">
+                                {% if v.status == 'Retired' %}
+                                <button type="submit" class="btn btn-secondary btn-sm" title="Restore to Available">
+                                    <i class="fas fa-undo"></i> Restore
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-danger btn-sm" title="Toggle Out of Service (Retire)">
+                                    <i class="fas fa-ban"></i> Retire
+                                </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Vehicle Modal -->
+<div class="modal-backdrop" id="addVehicleModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><i class="fas fa-truck" style="color: var(--primary);"></i> Register New Vehicle Asset</h3>
+            <button class="modal-close-btn" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_vehicle') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Vehicle Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Van-05 Express" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Make & Model</label>
+                    <input type="text" name="model" class="form-control" placeholder="e.g. Ford Transit 2024" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">License Plate (Unique Asset ID)</label>
+                    <input type="text" name="license_plate" class="form-control" placeholder="e.g. VAN-9912" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Type</label>
+                        <select name="type" class="form-select" required style="width: 100%;">
+                            <option value="Van">Van</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Bike">Cargo Bike</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Region</label>
+                        <select name="region" class="form-select" required style="width: 100%;">
+                            <option value="Central">Central</option>
+                            <option value="North">North</option>
+                            <option value="South">South</option>
+                            <option value="East">East</option>
+                            <option value="West">West</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Max Load Capacity (kg)</label>
+                        <input type="number" step="1" name="max_capacity" class="form-control" placeholder="500" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Initial Odometer (km)</label>
+                        <input type="number" step="1" name="odometer" class="form-control" value="0" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Acquisition Cost ($)</label>
+                    <input type="number" step="0.01" name="acquisition_cost" class="form-control" placeholder="35000" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Asset</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

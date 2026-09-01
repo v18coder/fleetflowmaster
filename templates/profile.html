@@ -1,0 +1,100 @@
+﻿{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block header_title %}Account Profile & Security{% endblock %}
+{% block header_subtitle %}Manage your credentials, preferences, and personal security settings{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; max-width: 1000px;">
+    <!-- Profile & Information Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <i class="fas fa-user-circle" style="color: var(--primary);"></i> Personal Profile Details
+            </div>
+        </div>
+        <div class="panel-body">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                <div class="user-avatar" style="width: 60px; height: 60px; font-size: 22px; background: linear-gradient(135deg, #4f46e5, #06b6d4);">
+                    {{ current_user.name[:2].upper() }}
+                </div>
+                <div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">{{ current_user.name }}</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">{{ current_user.email }}</p>
+                    <span class="status-pill pill-available" style="font-size: 11px;">
+                        <i class="fas fa-shield-alt"></i> {{ current_user.role }}
+                    </span>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('profile') }}">
+                <input type="hidden" name="action" value="update_info">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-id-badge"></i> Full Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ current_user.name }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-envelope"></i> Work Email Address</label>
+                    <input type="email" class="form-control" value="{{ current_user.email }}" readonly style="background: #f8fafc; color: var(--text-muted);">
+                    <small style="font-size: 11px; color: var(--text-muted);">Email address cannot be modified directly.</small>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                    <i class="fas fa-save"></i> Save Profile Details
+                </button>
+            </form>
+
+            <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+                    <i class="fas fa-user-shield" style="color: var(--primary);"></i> Role Privileges Summary:
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0;">
+                    {% if current_user.role == 'Manager' %}
+                    Executive Authority: Manage vehicle assets, approve maintenance, dispatch trips, and conduct ROI audits.
+                    {% elif current_user.role == 'Dispatcher' %}
+                    Operational Authority: Create trips, assign compliant drivers, and validate cargo payload limits.
+                    {% elif current_user.role == 'Safety Officer' %}
+                    Safety & Compliance: Audit driver safety ratings, monitor license expirations, and enforce duty limits.
+                    {% else %}
+                    Financial Authority: Audit fuel telemetry, maintenance cost invoices, and export CSV ledger reports.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security & Password Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <i class="fas fa-lock" style="color: var(--secondary);"></i> Update Password & Security
+            </div>
+        </div>
+        <div class="panel-body">
+            <form method="POST" action="{{ url_for('profile') }}">
+                <input type="hidden" name="action" value="update_password">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-shield-halved"></i> Current Password</label>
+                    <input type="password" name="current_password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-key"></i> New Password</label>
+                    <input type="password" name="new_password" class="form-control" placeholder="Min 6 characters" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-check-double"></i> Confirm New Password</label>
+                    <input type="password" name="confirm_password" class="form-control" placeholder="Repeat new password" required>
+                </div>
+                <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 8px;">
+                    <i class="fas fa-lock"></i> Update Account Password
+                </button>
+            </form>
+
+            <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-color); text-align: center;">
+                <span style="font-size: 12px; color: var(--text-muted);">
+                    Forgot your current password?
+                    <a href="{{ url_for('forgot_password') }}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Reset via Email OTP</a>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

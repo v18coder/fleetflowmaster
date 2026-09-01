@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP | FleetFlow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px 20px;
+        }
+        .auth-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 460px;
+            padding: 36px;
+            position: relative;
+        }
+        .home-nav-btn {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            transition: all 0.2s;
+        }
+        .home-nav-btn:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+            transform: translateX(-2px);
+        }
+        .otp-input {
+            letter-spacing: 10px;
+            font-size: 26px;
+            font-weight: 800;
+            text-align: center;
+            color: var(--primary);
+            background: #f8fafc;
+            border: 2px solid #cbd5e1;
+            border-radius: var(--radius-md);
+            padding: 10px;
+        }
+        .otp-input:focus {
+            border-color: var(--primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+        .timer-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #b45309;
+            background: #fef3c7;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            border: 1px solid #fde68a;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <a href="{{ url_for('home') }}" class="home-nav-btn">
+            <i class="fas fa-arrow-left"></i> Home
+        </a>
+
+        <div style="text-align: center; margin-bottom: 24px; margin-top: 16px;">
+            <div class="logo-badge" style="margin: 0 auto 12px auto; width: 48px; height: 48px; font-size: 22px; background: var(--secondary);">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; color: var(--text-main);">Verify OTP Code</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                Enter the 6-digit verification code sent to<br>
+                <strong style="color: var(--text-main);">{{ email }}</strong>
+            </p>
+            <div style="margin-top: 10px;">
+                <span class="timer-badge">
+                    <i class="fas fa-clock"></i> Expires in <span id="countdown">05:00</span>
+                </span>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div style="padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-bottom: 16px; background: {% if category=='danger' %}#fef2f2; color: #991b1b; border: 1px solid #fecaca;{% elif category=='info' %}#eff6ff; color: #1e40af; border: 1px solid #bfdbfe;{% else %}#ecfdf5; color: #065f46; border: 1px solid #a7f3d0;{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('verify_otp') }}">
+            <input type="hidden" name="email" value="{{ email }}">
+
+            <div class="form-group">
+                <label class="form-label" style="text-align: center; display: block;">
+                    <i class="fas fa-key"></i> 6-Digit One-Time Password
+                </label>
+                <input type="text" name="otp" class="form-control otp-input" maxlength="6" pattern="[0-9]{6}" placeholder="------" required autofocus autocomplete="off">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 14px; margin-top: 8px;">
+                <i class="fas fa-check-circle"></i> Verify & Proceed to Reset
+            </button>
+        </form>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 12.5px;">
+            <a href="{{ url_for('login') }}" style="color: var(--text-muted); text-decoration: none;">
+                <i class="fas fa-arrow-left"></i> Back to Sign In
+            </a>
+            <form method="POST" action="{{ url_for('resend_otp') }}" style="display: inline;">
+                <input type="hidden" name="email" value="{{ email }}">
+                <button type="submit" id="resendBtn" style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 12.5px; padding: 0;">
+                    <i class="fas fa-rotate"></i> Resend OTP
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 5-minute countdown display
+        let timeLeft = 300;
+        const countdownEl = document.getElementById('countdown');
+        const timerInterval = setInterval(function() {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                countdownEl.textContent = 'Expired';
+                countdownEl.parentElement.style.color = '#991b1b';
+                countdownEl.parentElement.style.background = '#fef2f2';
+                countdownEl.parentElement.style.borderColor = '#fecaca';
+            } else {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

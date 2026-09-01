@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FleetFlow{% endblock %} | Fleet & Logistics Hub</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo/logo.png') }}">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Design System CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-badge">
+                    <i class="fas fa-cubes"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>FleetFlow</h1>
+                    <span>Logistics OS</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Core Operations</div>
+                <a href="{{ url_for('dashboard') }}"
+                    class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Command Center</span>
+                </a>
+
+                <a href="{{ url_for('vehicles') }}"
+                    class="nav-link {% if request.endpoint == 'vehicles' %}active{% endif %}">
+                    <i class="fas fa-truck-moving"></i>
+                    <span>Vehicle Registry</span>
+                </a>
+
+                <a href="{{ url_for('trips') }}" class="nav-link {% if request.endpoint == 'trips' %}active{% endif %}">
+                    <i class="fas fa-route"></i>
+                    <span>Trip Dispatcher</span>
+                </a>
+
+                <a href="{{ url_for('maintenance') }}"
+                    class="nav-link {% if request.endpoint == 'maintenance' %}active{% endif %}">
+                    <i class="fas fa-wrench"></i>
+                    <span>Maintenance Logs</span>
+                </a>
+
+                <a href="{{ url_for('expenses') }}"
+                    class="nav-link {% if request.endpoint == 'expenses' %}active{% endif %}">
+                    <i class="fas fa-gas-pump"></i>
+                    <span>Fuel & Expenses</span>
+                </a>
+
+                <div class="nav-section-title">Compliance & Audits</div>
+                <a href="{{ url_for('drivers') }}"
+                    class="nav-link {% if request.endpoint == 'drivers' %}active{% endif %}">
+                    <i class="fas fa-id-card"></i>
+                    <span>Driver Profiles</span>
+                </a>
+
+                <a href="{{ url_for('reports') }}"
+                    class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Analytics & ROI</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="user-avatar">
+                        {{ current_user.name[:2].upper() if current_user.is_authenticated else 'FF' }}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">{{ current_user.name if current_user.is_authenticated else 'Guest User'
+                            }}</div>
+                        <span class="user-role-badge">{{ current_user.role if current_user.is_authenticated else
+                            'Viewer' }}</span>
+                    </div>
+                    <a href="{{ url_for('logout') }}" title="Logout"
+                        style="color: #94a3b8; font-size: 16px; margin-left: 8px;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div class="page-title">
+                    <h2>{% block header_title %}Command Center{% endblock %}</h2>
+                    <p>{% block header_subtitle %}Overview of fleet operations and logistics telemetry{% endblock %}</p>
+                </div>
+                <div class="nav-actions">
+                    <span style="font-size: 12px; color: var(--text-muted);">
+                        <i class="far fa-calendar-alt"></i> {{ today() }}
+                    </span>
+                    <a href="{{ url_for('profile') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-user-circle"></i> Profile
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm" title="Sign out">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </a>
+                </div>
+            </header>
+
+            <!-- Toast Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="toast-container">
+                {% for category, message in messages %}
+                <div class="toast toast-{{ category }}">
+                    <i
+                        class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Page Body -->
+            <main class="content-body">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Main JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>
